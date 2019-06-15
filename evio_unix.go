@@ -17,7 +17,7 @@ import (
 	"time"
 
 	reuseport "github.com/kavu/go_reuseport"
-	"github.com/tidwall/evio/internal"
+	"github.com/zhujintao/evio/internal"
 )
 
 type conn struct {
@@ -55,6 +55,7 @@ type server struct {
 	balance  LoadBalance        // load balancing method
 	accepted uintptr            // accept counter
 	tch      chan time.Duration // ticker channel
+	clients  map[string]*conn
 
 	//ticktm   time.Time      // next tick time
 }
@@ -98,6 +99,7 @@ func serve(events Events, listeners []*listener) error {
 	s.cond = sync.NewCond(&sync.Mutex{})
 	s.balance = events.LoadBalance
 	s.tch = make(chan time.Duration)
+	s.clients = make(map[string]*conn)
 
 	//println("-- server starting")
 	if s.events.Serving != nil {
@@ -243,6 +245,7 @@ func loopRun(s *server, l *loop) {
 		default:
 			return loopRead(s, l, c)
 		}
+
 	})
 }
 
@@ -297,6 +300,7 @@ func loopAccept(s *server, l *loop, fd int) error {
 			break
 		}
 	}
+
 	return nil
 }
 
@@ -342,6 +346,7 @@ func loopUDPRead(s *server, l *loop, lnidx, fd int) error {
 }
 
 func loopOpened(s *server, l *loop, c *conn) error {
+
 	c.opened = true
 	c.addrIndex = c.lnidx
 	c.localAddr = s.lns[c.lnidx].lnaddr
@@ -401,6 +406,7 @@ func loopAction(s *server, l *loop, c *conn) error {
 	if len(c.out) == 0 && c.action == None {
 		l.poll.ModRead(c.fd)
 	}
+
 	return nil
 }
 
@@ -421,6 +427,7 @@ func loopWake(s *server, l *loop, c *conn) error {
 
 func loopRead(s *server, l *loop, c *conn) error {
 	var in []byte
+
 	n, err := syscall.Read(c.fd, l.packet)
 	if n == 0 || err != nil {
 		if err == syscall.EAGAIN {
@@ -432,13 +439,38 @@ func loopRead(s *server, l *loop, c *conn) error {
 	if !c.reuse {
 		in = append([]byte{}, in...)
 	}
+
+	if s.events.FlagClient != nil {
+		flag := s.events.FlagClient(c, in)
+		if flag != "" {
+			s.clients[flag] = c
+		}
+	}
+
 	if s.events.Data != nil {
+
 		out, action := s.events.Data(c, in)
 		c.action = action
 		if len(out) > 0 {
 			c.out = append([]byte{}, out...)
 		}
+
 	}
+
+	if s.events.Send != nil {
+
+		flag, out, action := s.events.Send(in)
+		if flag != "" {
+
+			c = s.clients[flag]
+
+			c.out = out
+			c.action = action
+
+		}
+
+	}
+
 	if len(c.out) != 0 || c.action != None {
 		l.poll.ModReadWrite(c.fd)
 	}

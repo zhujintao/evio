@@ -24,6 +24,8 @@ const (
 	Close
 	// Shutdown shutdowns the server.
 	Shutdown
+	// Send data to client
+
 )
 
 // Options are set when the client opens.
@@ -122,6 +124,10 @@ type Events struct {
 	// Tick fires immediately after the server starts and will fire again
 	// following the duration specified by the delay return value.
 	Tick func() (delay time.Duration, action Action)
+	// Clients Manager
+	FlagClient func(c Conn, in []byte) (flag string)
+	// Send to Clinet
+	Send func(in []byte) (flag string, out []byte, action Action)
 }
 
 // Serve starts handling events for the specified addresses.
