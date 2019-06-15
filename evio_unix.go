@@ -7,6 +7,7 @@
 package evio
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -23,6 +24,7 @@ import (
 type conn struct {
 	fd         int              // file descriptor
 	lnidx      int              // listener index in the server lns list
+	flidx      string           // client id flag
 	out        []byte           // write buffer
 	sa         syscall.Sockaddr // remote socket address
 	reuse      bool             // should reuse input buffer
@@ -163,6 +165,8 @@ func serve(events Events, listeners []*listener) error {
 func loopCloseConn(s *server, l *loop, c *conn, err error) error {
 	atomic.AddInt32(&l.count, -1)
 	delete(l.fdconns, c.fd)
+	delete(s.clients, c.flidx)
+	fmt.Println(c.flidx)
 	syscall.Close(c.fd)
 	if s.events.Closed != nil {
 		switch s.events.Closed(c, err) {
@@ -444,6 +448,7 @@ func loopRead(s *server, l *loop, c *conn) error {
 		flag := s.events.FlagClient(c, in)
 		if flag != "" {
 			s.clients[flag] = c
+			c.flidx = flag
 		}
 	}
 
@@ -463,9 +468,11 @@ func loopRead(s *server, l *loop, c *conn) error {
 		if flag != "" {
 
 			c = s.clients[flag]
-
-			c.out = out
-			c.action = action
+		}
+		c.out = out
+		c.action = action
+		if len(out) > 0 {
+			c.out = append([]byte{}, out...)
 
 		}
 
