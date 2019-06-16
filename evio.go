@@ -127,11 +127,12 @@ type Events struct {
 	// Clients Manager
 	Make func(c Conn, in []byte) (flag string)
 	// Send to Clinet
-	Send      sender
-	ReadWrite func(c Conn, in []byte) (out []byte, action Action)
+	Sender sender
 }
+
+// Sender
+
 type sender struct {
-	// ToChan Make value, 'toall' is broadcast
 	ToChan  chan string
 	MsgChan chan []byte
 }
@@ -206,6 +207,12 @@ func Serve(events Events, addr ...string) error {
 // InputStream is a helper type for managing input streams from inside
 // the Data event.
 type InputStream struct{ b []byte }
+
+// Send ToChan Make value, 'toall' is broadcast
+func (e *Events) Send(to string, msg []byte) {
+	e.Sender.ToChan <- to
+	e.Sender.MsgChan <- msg
+}
 
 // Begin accepts a new packet and returns a working sequence of
 // unprocessed bytes.

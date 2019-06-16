@@ -166,8 +166,8 @@ func loopSendConn(s *server, l *loop) {
 
 	for {
 
-		flag := <-s.events.Send.ToChan
-		msg := <-s.events.Send.MsgChan
+		flag := <-s.events.Sender.ToChan
+		msg := <-s.events.Sender.MsgChan
 
 		if flag == "toall" {
 			for _, l := range s.loops {
@@ -499,7 +499,6 @@ func loopRead(s *server, l *loop, c *conn) error {
 		if len(out) > 0 {
 			c.out = append([]byte{}, out...)
 		}
-
 	}
 
 	if len(c.out) != 0 || c.action != None {
