@@ -203,6 +203,7 @@ func Serve(events Events, addr ...string) error {
 	if stdlib {
 		return stdserve(events, lns)
 	}
+
 	return serve(events, lns)
 }
 
