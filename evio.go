@@ -125,9 +125,15 @@ type Events struct {
 	// following the duration specified by the delay return value.
 	Tick func() (delay time.Duration, action Action)
 	// Clients Manager
-	FlagClient func(c Conn, in []byte) (flag string)
+	Make func(c Conn, in []byte) (flag string)
 	// Send to Clinet
-	Send func(in []byte) (flag string, out []byte, action Action)
+	Send      sender
+	ReadWrite func(c Conn, in []byte) (out []byte, action Action)
+}
+type sender struct {
+	// ToChan Make value, 'toall' is broadcast
+	ToChan  chan string
+	MsgChan chan []byte
 }
 
 // Serve starts handling events for the specified addresses.

@@ -7,7 +7,6 @@
 package evio
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -158,15 +157,54 @@ func serve(events Events, listeners []*listener) error {
 	s.wg.Add(len(s.loops))
 	for _, l := range s.loops {
 		go loopRun(s, l)
+		go loopSendConn(s, l)
 	}
 	return nil
+}
+
+func loopSendConn(s *server, l *loop) {
+
+	for {
+
+		flag := <-s.events.Send.ToChan
+		msg := <-s.events.Send.MsgChan
+
+		if flag == "toall" {
+			for _, l := range s.loops {
+				for _, c := range l.fdconns {
+					c.out = msg
+					//syscall.Write(c.fd, c.out)
+					if len(c.out) > 0 {
+						//l.poll.ModReadWrite(c.fd)
+						loopWrite(s, l, c)
+					}
+
+				}
+			}
+
+		} else {
+
+			if c, ok := s.clients[flag]; ok {
+				c.out = msg
+
+				//syscall.Write(c.fd, c.out)
+
+				if len(c.out) > 0 {
+					//l.poll.ModReadWrite(c.fd)
+					loopWrite(s, l, c)
+				}
+
+			}
+		}
+
+	}
+
 }
 
 func loopCloseConn(s *server, l *loop, c *conn, err error) error {
 	atomic.AddInt32(&l.count, -1)
 	delete(l.fdconns, c.fd)
 	delete(s.clients, c.flidx)
-	fmt.Println(c.flidx)
 	syscall.Close(c.fd)
 	if s.events.Closed != nil {
 		switch s.events.Closed(c, err) {
@@ -385,9 +423,11 @@ func loopWrite(s *server, l *loop, c *conn) error {
 		}
 		return loopCloseConn(s, l, c, err)
 	}
+
 	if n == len(c.out) {
 		c.out = nil
 	} else {
+		//fmt.Println(n, string(c.out))
 		c.out = c.out[n:]
 	}
 	if len(c.out) == 0 && c.action == None {
@@ -444,8 +484,8 @@ func loopRead(s *server, l *loop, c *conn) error {
 		in = append([]byte{}, in...)
 	}
 
-	if s.events.FlagClient != nil {
-		flag := s.events.FlagClient(c, in)
+	if s.events.Make != nil {
+		flag := s.events.Make(c, in)
 		if flag != "" {
 			s.clients[flag] = c
 			c.flidx = flag
@@ -458,22 +498,6 @@ func loopRead(s *server, l *loop, c *conn) error {
 		c.action = action
 		if len(out) > 0 {
 			c.out = append([]byte{}, out...)
-		}
-
-	}
-
-	if s.events.Send != nil {
-
-		flag, out, action := s.events.Send(in)
-		if flag != "" {
-
-			c = s.clients[flag]
-		}
-		c.out = out
-		c.action = action
-		if len(out) > 0 {
-			c.out = append([]byte{}, out...)
-
 		}
 
 	}
