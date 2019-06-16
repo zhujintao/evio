@@ -162,6 +162,9 @@ func serve(events Events, listeners []*listener) error {
 	return nil
 }
 
+func loopCtx(s *sender) {
+
+}
 func loopSendConn(s *server, l *loop) {
 
 	for {
@@ -172,12 +175,8 @@ func loopSendConn(s *server, l *loop) {
 		if flag == "toall" {
 			for _, l := range s.loops {
 				for _, c := range l.fdconns {
-					c.out = msg
-					//syscall.Write(c.fd, c.out)
-					if len(c.out) > 0 {
-						//l.poll.ModReadWrite(c.fd)
-						loopWrite(s, l, c)
-					}
+
+					syscall.Write(c.fd, msg)
 
 				}
 			}
@@ -185,14 +184,8 @@ func loopSendConn(s *server, l *loop) {
 		} else {
 
 			if c, ok := s.clients[flag]; ok {
-				c.out = msg
 
-				//syscall.Write(c.fd, c.out)
-
-				if len(c.out) > 0 {
-					//l.poll.ModReadWrite(c.fd)
-					loopWrite(s, l, c)
-				}
+				syscall.Write(c.fd, msg)
 
 			}
 		}
@@ -388,7 +381,6 @@ func loopUDPRead(s *server, l *loop, lnidx, fd int) error {
 }
 
 func loopOpened(s *server, l *loop, c *conn) error {
-
 	c.opened = true
 	c.addrIndex = c.lnidx
 	c.localAddr = s.lns[c.lnidx].lnaddr
@@ -492,10 +484,21 @@ func loopRead(s *server, l *loop, c *conn) error {
 		}
 	}
 
+	if s.events.Unpack != nil {
+		ctx, flag, action := s.events.Unpack(c, in)
+		c.action = action
+		if flag != "" {
+			s.clients[flag] = c
+			c.flidx = flag
+		}
+		s.events.Ctx <- ctx
+	}
+
 	if s.events.Data != nil {
 
 		out, action := s.events.Data(c, in)
 		c.action = action
+
 		if len(out) > 0 {
 			c.out = append([]byte{}, out...)
 		}

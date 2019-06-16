@@ -128,6 +128,8 @@ type Events struct {
 	Make func(c Conn, in []byte) (flag string)
 	// Send to Clinet
 	Sender sender
+	Unpack func(c Conn, in []byte) (ctx interface{}, clientFlag string, action Action)
+	Ctx    chan interface{}
 }
 
 // Sender
