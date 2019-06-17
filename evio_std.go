@@ -26,6 +26,7 @@ type stdserver struct {
 	cond     *sync.Cond     // shutdown signaler
 	serr     error          // signal error
 	accepted uintptr        // accept counter
+	clients  map[string]*stdconn
 }
 
 type stdudpconn struct {
@@ -56,6 +57,7 @@ type stdconn struct {
 	ctx        interface{} // user-defined context
 	loop       *stdloop    // owner loop
 	lnidx      int         // index of listener
+	flidx      string      // client id flag
 	donein     []byte      // extra data for done connection
 	done       int32       // 0: attached, 1: closed, 2: detached
 }
@@ -166,12 +168,42 @@ func stdserve(events Events, listeners []*listener) error {
 	s.loopwg.Add(numLoops)
 	for i := 0; i < numLoops; i++ {
 		go stdloopRun(s, s.loops[i])
+		go stdloopSendConn(s, s.loops[i])
+
 	}
 	s.lnwg.Add(len(listeners))
 	for i := 0; i < len(listeners); i++ {
 		go stdlistenerRun(s, listeners[i], i)
+
 	}
 	return ferr
+}
+
+func stdloopSendConn(s *stdserver, l *stdloop) {
+
+	for {
+
+		flag := <-s.events.Sender.ToChan
+		msg := <-s.events.Sender.MsgChan
+
+		if *flag == "toall" {
+			for _, l := range s.loops {
+				for c := range l.conns {
+					c.conn.Write(*msg)
+
+				}
+			}
+
+		} else {
+
+			if c, ok := s.clients[*flag]; ok {
+				c.conn.Write(*msg)
+
+			}
+		}
+
+	}
+
 }
 
 func stdlistenerRun(s *stdserver, ln *listener, lnidx int) {
@@ -377,6 +409,27 @@ func stdloopRead(s *stdserver, l *stdloop, c *stdconn, in []byte) error {
 		c.donein = append(c.donein, in...)
 		return nil
 	}
+
+	if s.events.Unpack != nil {
+		ctx, flag, action := s.events.Unpack(c, in)
+
+		if flag != "" {
+			s.clients[flag] = c
+			c.flidx = flag
+		}
+
+		s.events.Ctx <- &ctx
+
+		switch action {
+		case Shutdown:
+			return errClosing
+		case Detach:
+			return stdloopDetach(s, l, c)
+		case Close:
+			return stdloopClose(s, l, c)
+		}
+	}
+
 	if s.events.Data != nil {
 		out, action := s.events.Data(c, in)
 		if len(out) > 0 {
