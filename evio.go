@@ -128,15 +128,15 @@ type Events struct {
 	Make func(c Conn, in []byte) (flag string)
 	// Send to Clinet
 	Sender sender
-	Unpack func(c Conn, in []byte) (ctx interface{}, clientFlag string, action Action)
-	Ctx    chan interface{}
+	Unpack func(c Conn, in []byte) (ctx *interface{}, clientFlag string, action Action)
+	Ctx    chan *interface{}
 }
 
 // Sender
 
 type sender struct {
-	ToChan  chan string
-	MsgChan chan []byte
+	ToChan  chan *string
+	MsgChan chan *[]byte
 }
 
 // Serve starts handling events for the specified addresses.
@@ -213,8 +213,8 @@ type InputStream struct{ b []byte }
 
 // Send ToChan Make value, 'toall' is broadcast
 func (e *Events) Send(to string, msg []byte) {
-	e.Sender.ToChan <- to
-	e.Sender.MsgChan <- msg
+	e.Sender.ToChan <- &to
+	e.Sender.MsgChan <- &msg
 }
 
 // Begin accepts a new packet and returns a working sequence of

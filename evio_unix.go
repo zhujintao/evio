@@ -101,7 +101,8 @@ func serve(events Events, listeners []*listener) error {
 	s.balance = events.LoadBalance
 	s.tch = make(chan time.Duration)
 	s.clients = make(map[string]*conn)
-
+	//s.events.Sender.MsgChan = make(chan *[]byte)
+	//s.events.Sender.ToChan = make(chan *string)
 	//println("-- server starting")
 	if s.events.Serving != nil {
 		var svr Server
@@ -172,20 +173,20 @@ func loopSendConn(s *server, l *loop) {
 		flag := <-s.events.Sender.ToChan
 		msg := <-s.events.Sender.MsgChan
 
-		if flag == "toall" {
+		if *flag == "toall" {
 			for _, l := range s.loops {
 				for _, c := range l.fdconns {
 
-					syscall.Write(c.fd, msg)
+					syscall.Write(c.fd, *msg)
 
 				}
 			}
 
 		} else {
 
-			if c, ok := s.clients[flag]; ok {
+			if c, ok := s.clients[*flag]; ok {
 
-				syscall.Write(c.fd, msg)
+				syscall.Write(c.fd, *msg)
 
 			}
 		}
