@@ -492,7 +492,7 @@ func loopRead(s *server, l *loop, c *conn) error {
 			s.clients[flag] = c
 			c.flidx = flag
 		}
-		s.events.Ctx <- ctx
+		s.events.Ctx <- &ctx
 	}
 
 	if s.events.Data != nil {
