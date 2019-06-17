@@ -476,6 +476,7 @@ func stdloopDetach(s *stdserver, l *stdloop, c *stdconn) error {
 func stdloopClose(s *stdserver, l *stdloop, c *stdconn) error {
 	atomic.StoreInt32(&c.done, 1)
 	c.conn.SetReadDeadline(time.Now())
+	delete(s.clients, c.flidx)
 	return nil
 }
 
