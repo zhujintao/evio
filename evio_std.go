@@ -114,6 +114,7 @@ func stdserve(events Events, listeners []*listener) error {
 	s.events = events
 	s.lns = listeners
 	s.cond = sync.NewCond(&sync.Mutex{})
+	s.clients = make(map[string]*stdconn)
 
 	//println("-- server starting")
 	if events.Serving != nil {
