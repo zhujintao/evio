@@ -418,8 +418,9 @@ func stdloopRead(s *stdserver, l *stdloop, c *stdconn, in []byte) error {
 			s.clients[flag] = c
 			c.flidx = flag
 		}
-
-		s.events.Ctx <- &ctx
+		if ctx != nil {
+			s.events.Ctx <- &ctx
+		}
 
 		switch action {
 		case Shutdown:

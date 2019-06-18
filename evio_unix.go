@@ -163,9 +163,6 @@ func serve(events Events, listeners []*listener) error {
 	return nil
 }
 
-func loopCtx(s *sender) {
-
-}
 func loopSendConn(s *server, l *loop) {
 
 	for {
@@ -492,7 +489,9 @@ func loopRead(s *server, l *loop, c *conn) error {
 			s.clients[flag] = c
 			c.flidx = flag
 		}
-		s.events.Ctx <- &ctx
+		if ctx != nil {
+			s.events.Ctx <- &ctx
+		}
 	}
 
 	if s.events.Data != nil {
