@@ -364,7 +364,7 @@ func stdloopError(s *stdserver, l *stdloop, c *stdconn, err error) error {
 	}
 	if closeEvent {
 		if s.events.Closed != nil {
-			switch s.events.Closed(c, err) {
+			switch s.events.Closed(c, c.flidx, err) {
 			case Shutdown:
 				return errClosing
 			}
