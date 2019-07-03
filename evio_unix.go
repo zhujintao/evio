@@ -198,7 +198,7 @@ func loopCloseConn(s *server, l *loop, c *conn, err error) error {
 	delete(s.clients, c.flidx)
 	syscall.Close(c.fd)
 	if s.events.Closed != nil {
-		switch s.events.Closed(c, err) {
+		switch s.events.Closed(c, c.flidx, err) {
 		case None:
 		case Shutdown:
 			return errClosing

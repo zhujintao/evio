@@ -106,7 +106,7 @@ type Events struct {
 	Opened func(c Conn) (out []byte, opts Options, action Action)
 	// Closed fires when a connection has closed.
 	// The err parameter is the last known connection error.
-	Closed func(c Conn, err error) (action Action)
+	Closed func(c Conn, flidx string, err error) (action Action)
 	// Detached fires when a connection has been previously detached.
 	// Once detached it's up to the receiver of this event to manage the
 	// state of the connection. The Closed event will not be called for
