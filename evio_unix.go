@@ -201,7 +201,9 @@ func loopSendConn(s *server, l *loop) {
 func loopCloseConn(s *server, l *loop, c *conn, err error) error {
 	atomic.AddInt32(&l.count, -1)
 	delete(l.fdconns, c.fd)
+	s.wx.Lock()
 	delete(s.clients, c.flidx)
+	s.wx.Unlock()
 	syscall.Close(c.fd)
 	if s.events.Closed != nil {
 		switch s.events.Closed(c, c.flidx, err) {
