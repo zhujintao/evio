@@ -184,8 +184,10 @@ func loopSendConn(s *server, l *loop) {
 		} else {
 
 			s.wx.RLock()
-			if c, ok := s.clients[*flag]; ok {
-				s.wx.RUnlock()
+			c, ok := s.clients[*flag]
+			s.wx.RUnlock()
+			if ok {
+
 				syscall.Write(c.fd, *msg)
 
 			}
