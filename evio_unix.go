@@ -57,7 +57,7 @@ type server struct {
 	accepted uintptr            // accept counter
 	tch      chan time.Duration // ticker channel
 	clients  map[string]*conn
-	wx       sync.RWMutex
+	wx       *sync.RWMutex
 
 	//ticktm   time.Time      // next tick time
 }
@@ -102,6 +102,7 @@ func serve(events Events, listeners []*listener) error {
 	s.balance = events.LoadBalance
 	s.tch = make(chan time.Duration)
 	s.clients = make(map[string]*conn)
+	s.wx = &sync.RWMutex{}
 	//s.events.Sender.MsgChan = make(chan *[]byte)
 	//s.events.Sender.ToChan = make(chan *string)
 	//println("-- server starting")
@@ -184,10 +185,11 @@ func loopSendConn(s *server, l *loop) {
 
 			s.wx.RLock()
 			if c, ok := s.clients[*flag]; ok {
-				s.wx.Unlock()
+				s.wx.RUnlock()
 				syscall.Write(c.fd, *msg)
 
 			}
+
 		}
 
 	}
@@ -480,10 +482,10 @@ func loopRead(s *server, l *loop, c *conn) error {
 	if s.events.Make != nil {
 		flag := s.events.Make(c, in)
 		if flag != "" {
-			s.wx.Lock()
+			//	s.wx.Lock()
 			s.clients[flag] = c
 			c.flidx = flag
-			s.wx.Unlock()
+			//	s.wx.Unlock()
 		}
 	}
 
