@@ -57,6 +57,7 @@ type server struct {
 	accepted uintptr            // accept counter
 	tch      chan time.Duration // ticker channel
 	clients  map[string]*conn
+	wx       sync.RWMutex
 
 	//ticktm   time.Time      // next tick time
 }
@@ -181,8 +182,9 @@ func loopSendConn(s *server, l *loop) {
 
 		} else {
 
+			s.wx.RLock()
 			if c, ok := s.clients[*flag]; ok {
-
+				s.wx.Unlock()
 				syscall.Write(c.fd, *msg)
 
 			}
@@ -194,6 +196,8 @@ func loopSendConn(s *server, l *loop) {
 
 func loopCloseConn(s *server, l *loop, c *conn, err error) error {
 	atomic.AddInt32(&l.count, -1)
+	delete(l.fdconns, c.fd)
+	delete(s.clients, c.flidx)
 	syscall.Close(c.fd)
 	if s.events.Closed != nil {
 		switch s.events.Closed(c, c.flidx, err) {
@@ -202,8 +206,7 @@ func loopCloseConn(s *server, l *loop, c *conn, err error) error {
 			return errClosing
 		}
 	}
-	delete(l.fdconns, c.fd)
-	delete(s.clients, c.flidx)
+
 	return nil
 }
 
@@ -477,8 +480,10 @@ func loopRead(s *server, l *loop, c *conn) error {
 	if s.events.Make != nil {
 		flag := s.events.Make(c, in)
 		if flag != "" {
+			s.wx.Lock()
 			s.clients[flag] = c
 			c.flidx = flag
+			s.wx.Unlock()
 		}
 	}
 
@@ -486,8 +491,10 @@ func loopRead(s *server, l *loop, c *conn) error {
 		ctx, flag, action := s.events.Unpack(c, in)
 		c.action = action
 		if flag != "" {
+			s.wx.Lock()
 			s.clients[flag] = c
 			c.flidx = flag
+			s.wx.Unlock()
 		}
 		if ctx != nil {
 			s.events.Ctx <- &ctx
