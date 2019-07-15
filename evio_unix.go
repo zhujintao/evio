@@ -486,10 +486,10 @@ func loopRead(s *server, l *loop, c *conn) error {
 	if s.events.Make != nil {
 		flag := s.events.Make(c, in)
 		if flag != "" {
-			//	s.wx.Lock()
+			s.wx.Lock()
 			s.clients[flag] = c
 			c.flidx = flag
-			//	s.wx.Unlock()
+			s.wx.Unlock()
 		}
 	}
 
