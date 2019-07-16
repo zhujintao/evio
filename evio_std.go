@@ -6,6 +6,7 @@ package evio
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"runtime"
@@ -421,6 +422,7 @@ func stdloopRead(s *stdserver, l *stdloop, c *stdconn, in []byte) error {
 		if ctx != nil {
 			s.events.Ctx <- &ctx
 		}
+		fmt.Println("[evio] s.clients MAP length Total: ", len(s.clients))
 
 		switch action {
 		case Shutdown:

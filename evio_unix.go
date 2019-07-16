@@ -7,6 +7,7 @@
 package evio
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -505,6 +506,7 @@ func loopRead(s *server, l *loop, c *conn) error {
 		if ctx != nil {
 			s.events.Ctx <- &ctx
 		}
+		fmt.Println("[evio] s.clients MAP length Total: ", len(s.clients))
 	}
 
 	if s.events.Data != nil {
